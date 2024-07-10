@@ -1,0 +1,2 @@
+<text>pages/todo/todo.wxml</text>
+<button type="primary" bind:tap="test1">写入第一个数据</button>
