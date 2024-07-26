@@ -11,8 +11,11 @@
     "navigationBarTextStyle": "black"
   },
   "sitemapLocation": "sitemap.json",
-  "style": "v2",
   "lazyCodeLoading": "requiredComponents",
+  "useExtendedLib": {
+    "weui": true
+  },
+  "style": "v2",
   "tabBar": {
     "color": "#A2A9B0",
     "selectedColor": "#07C160",

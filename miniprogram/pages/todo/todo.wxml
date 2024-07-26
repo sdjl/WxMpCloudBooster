@@ -1,2 +1,72 @@
-<text>pages/todo/todo.wxml</text>
-<button type="primary" bind:tap="test1">写入第一个数据</button>
+<view class="weui-form">
+
+  <view class="weui-form__text-area">
+    <h2 class="weui-form__title">又一个Todolist</h2>
+    <view class="weui-form__desc">~ slogan：万一这个成了呢 ~</view>
+  </view>
+
+  <view class="weui-form__control-area">
+
+    <view class="weui-cells__group weui-cells__group_form" wx:if="{{todo_list.length > 0}}">
+      <view class="weui-cells__title">未完成todo</view>
+      <view class="weui-cells weui-cells_checkbox">
+
+        <label class="weui-cell weui-cell_active weui-check__label"
+          wx:for="{{todo_list}}" wx:key="_id">
+          <view class="weui-cell__hd"
+            bind:tap="completeTodo" data-id="{{item._id}}">
+            <checkbox class="weui-check" />
+            <i class="weui-icon-checked"></i>
+          </view>
+          <view class="weui-cell__bd" bind:longtap="deleteTodo" data-id="{{item._id}}">
+            <view>{{item.title}}</view>
+          </view>
+        </label>
+
+      </view>
+    </view>
+
+    <view class="weui-cells__group weui-cells__group_form" wx:if="{{done_list.length > 0}}">
+      <view class="weui-cells__title">已完成todo</view>
+      <view class="weui-cells weui-cells_checkbox">
+
+        <label class="weui-cell weui-cell_active weui-check__label"
+          wx:for="{{done_list}}" wx:key="_id">
+          <view class="weui-cell__hd"
+            bind:tap="completeTodo" data-id="{{item._id}}">
+            <checkbox class="weui-check" checked/>
+            <i class="weui-icon-checked"></i>
+          </view>
+          <view class="weui-cell__bd" bind:longtap="deleteTodo" data-id="{{item._id}}">
+            <view>{{item.title}}</view>
+          </view>
+        </label>
+
+      </view>
+    </view>
+
+    <view class="weui-cells__group weui-cells__group_form">
+      <view class="weui-cells__title">创建新todo</view>
+      <view class="weui-cells weui-cells_form">
+        <view class="weui-cell" hover-class="weui-cell_active">
+          <view class="weui-cell__bd">
+            <textarea
+              class="weui-textarea"
+              value="{{new_title}}"
+              bind:input="_inputChange"
+              data-field="new_title"
+              placeholder="这里是一个<textarea>输入框"
+              placeholder-class="weui-input__placeholder"
+            />
+          </view>
+        </view>
+      </view>
+    </view>
+
+  </view>
+
+  <view class="weui-form__opr-area">
+    <view class="weui-btn weui-btn_primary" bind:tap="addTodo">添加 todo</view>
+  </view>
+
+</view>
