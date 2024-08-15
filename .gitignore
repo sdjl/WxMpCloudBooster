@@ -130,7 +130,6 @@ dist
 .pnp.*
 
 # wx
-articles
 miniprogram/app.js
 miniprogram/envList.js
 miniprogram/sitemap.json
@@ -140,3 +139,6 @@ project.config.json
 project.private.config.json
 .DS_Store
 .eslintrc.js
+articles
+docs
+.*.swp

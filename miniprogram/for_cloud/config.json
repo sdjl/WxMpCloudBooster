@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "openapi": [
+    ]
+  },
+  "booster_cloud_env_id" : "请填写你的云环境ID",
+  "booster_super_dev_openid": "请填写你的开发者的openid",
+  "booster_func_name": "当前云函数的名称",
+  "booster_app_list": {
+    "本云环境下第一个小程序的appid": "这个小程序的项目名称",
+    "本云环境下第二个小程序的appid": "这个小程序的项目名称"
+  },
+  "booster_user_can_del_colls": ["允许用户删除的集合名称"],
+  "booster_secret_key_alterable": "一个随机的字符串，用于加密"
+}
