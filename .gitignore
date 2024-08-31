@@ -139,6 +139,6 @@ project.config.json
 project.private.config.json
 .DS_Store
 .eslintrc.js
-articles
+draft
 docs
 .*.swp

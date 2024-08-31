@@ -14,7 +14,14 @@ Page({
 
   async onLoad (options) {
     const _ = this
+
+    /* 如果updateTodoList提示 “请先调用 wx.cloud.init() 完成初始化后再调用其他云 API” 的错误 
+       表示在执行updateTodoList时，云环境还没有初始化完成，你可以删除下面这句代码
+       然后在wxml中添加下面的代码，并通过点击按钮触发更新
+       <button type="primary" bind:tap="updateTodoList">更新Todo列表</button>
+    */
     _.updateTodoList()
+
   },
 
   async addTodo (e) {

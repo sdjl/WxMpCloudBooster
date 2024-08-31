@@ -16,11 +16,20 @@ const initRunning = (app) => {
 
 }
 
+/* 内存不足时清空缓存app.globalData.cache 
+*/
+const initMemoryWarning = (app) => {
+  wx.onMemoryWarning(() => {
+    const cache = app.globalData.cache
+    for (const i in cache) {
+      delete cache[i]
+    }
+  })
+}
 
 /* 这里需要显示传入app, 因为在app.js的App()注册函数执行完成之前, 调用getApp()可能会返回undefined 
 */
 export default function (app) {
-
   initRunning(app)
-
+  initMemoryWarning(app)
 }
