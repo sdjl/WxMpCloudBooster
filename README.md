@@ -16,7 +16,7 @@
 欢迎转载本系列文章，你可在项目中的./articles/目录下找到文章原文的 Markdown 文件。
 
 | 子文章序号 | 文章副标题 | 作者原文 | 官方发布 | Markdown |
-| -------- | ---------- | ---- | ---- |
+| -------- | ---------- | ---- | ---- | ---- |
 | 0        | 为什么你应该立即使用云开发写小程序？ | [原文](https://developers.weixin.qq.com/community/develop/article/doc/0002e44c61cf8061cbb1f3f7a61c13) | [官方](https://mp.weixin.qq.com/s/Ucnlyjcc6ceAuoLLiG6ktg) | [转载](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/0.md) |
 | 1        | 初识云开发数据库 | [原文](https://developers.weixin.qq.com/community/develop/article/doc/0004c2049e8400240fd1706046b813) | [官方](https://mp.weixin.qq.com/s/hqwqXloTYnkG4pesFVpFrA) | [转载](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/1.md) |
 | 2        | 云数据库基础读写工具函数 | [原文](https://developers.weixin.qq.com/community/develop/article/doc/000ae817a84f480025e1480d96b813) | [官方](https://mp.weixin.qq.com/s/XH6YHFpGUWM-ZD641FgsZg) | [转载](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/2.md) |
