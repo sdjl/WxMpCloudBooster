@@ -1,6 +1,7 @@
 'use strict'
 
 import utils from '../../utils/utils'
+const COLL = 'aaa_todo'
 
 Page({
 
@@ -14,21 +15,34 @@ Page({
 
   async onLoad (options) {
     const _ = this
+    console.log('onLoad', '云环境准备中')
+    // 代码运行到这里时，云环境可能还没有准备好，因此需要把调用云环境API的代码放到cloudReadyOnLoad函数中
+    utils.cloudReady().then(() => { _.cloudReadyOnLoad(options) })
 
-    /* 如果updateTodoList提示 “请先调用 wx.cloud.init() 完成初始化后再调用其他云 API” 的错误 
-       表示在执行updateTodoList时，云环境还没有初始化完成，你可以删除下面这句代码
-       然后在wxml中添加下面的代码，并通过点击按钮触发更新
-       <button type="primary" bind:tap="updateTodoList">更新Todo列表</button>
-    */
+  },
+
+  /* 云环境准备好后会执行这个函数。
+     注意，请在app.js文件的onLaunch方法中使用如下的代码初始化云环境对象，否则此函数不会执行：
+     this.cloud.init().then(() => {
+        _.globalData.running._set_cloud_ready = _.globalData.running.is_cloud_ready = true
+     })
+  */
+  cloudReadyOnLoad(options){
+    const _ = this
+    console.log('cloudReadyOnLoad', '云环境已准备好')
     _.updateTodoList()
-
   },
 
   async addTodo (e) {
     const _ = this
-    const { new_title } = _.data
+    const new_title = _.data.new_title.trim()
 
-    utils.addDoc('todo', {title: new_title, status: '未完成'})
+    if (!new_title) {
+      utils.showTip({ text: '请输入内容' })
+      return
+    }
+
+    utils.addDoc(COLL, {title: new_title, status: '未完成'})
       .then(new_todo_id => {
         _.updateTodoList()
         _.setData({
@@ -40,7 +54,7 @@ Page({
   async completeTodo (e) {
     const _ = this
     const { id } = e.currentTarget.dataset
-    utils.updateMyDoc('todo', id, { status: '已完成' })
+    utils.updateMyDoc(COLL, id, { status: '已完成' })
       .then(() => {
         _.updateTodoList()
       })
@@ -50,8 +64,8 @@ Page({
     const _ = this
 
     _.setData({
-      todo_list: await utils.myDocs({c: 'todo', w: {status: '未完成'} }),
-      done_list: await utils.myDocs({c: 'todo', w: {status: '已完成'} }),
+      todo_list: await utils.myDocs({c: COLL, w: {status: '未完成'} }),
+      done_list: await utils.myDocs({c: COLL, w: {status: '已完成'} }),
     })
 
   },
@@ -59,7 +73,7 @@ Page({
   async deleteTodo (e) {
     const _ = this
     const { id } = e.currentTarget.dataset
-    utils.removeMyDoc('todo', id).then(_.updateTodoList)
+    utils.removeMyDoc(COLL, id).then(_.updateTodoList)
   },
 
 })

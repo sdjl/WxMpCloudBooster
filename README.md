@@ -11,18 +11,19 @@
 
 ## 教程目录
 
-以下表格列出了目前可用的教程文章，您可以点击对应的链接学习具体内容。其中“官方发布”是腾讯官方根据公众号读者的阅读习惯，对文章适当修改后发布的版本，系统学习的话建议看“作者原文”。
+以下表格列出了目前已发布的教程文章，您可以点击对应的链接学习具体内容。其中“官方发布”是腾讯官方根据公众号读者的阅读习惯，对文章适当修改后发布的版本，系统学习的话建议看“作者原文”。
 
-欢迎转载本系列文章，你可在项目中的./articles/目录下找到文章原文的 Markdown 文件。
+欢迎转载本系列文章，你可在项目中的 `./articles/` 目录下找到文章原文的 Markdown 文件及图片。
 
-| 子文章序号 | 文章副标题 | 作者原文 | 官方发布 | Markdown |
+| 序号 | 子文章标题 | 作者原文 | 官方发布 | 欢迎转载 |
 | -------- | ---------- | ---- | ---- | ---- |
-| 0        | 为什么你应该立即使用云开发写小程序？ | [原文](https://developers.weixin.qq.com/community/develop/article/doc/0002e44c61cf8061cbb1f3f7a61c13) | [官方](https://mp.weixin.qq.com/s/Ucnlyjcc6ceAuoLLiG6ktg) | [转载](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/0.md) |
-| 1        | 初识云开发数据库 | [原文](https://developers.weixin.qq.com/community/develop/article/doc/0004c2049e8400240fd1706046b813) | [官方](https://mp.weixin.qq.com/s/hqwqXloTYnkG4pesFVpFrA) | [转载](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/1.md) |
-| 2        | 云数据库基础读写工具函数 | [原文](https://developers.weixin.qq.com/community/develop/article/doc/000ae817a84f480025e1480d96b813) | [官方](https://mp.weixin.qq.com/s/XH6YHFpGUWM-ZD641FgsZg) | [转载](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/2.md) |
-| 3        | 高级数据库工具函数 | [原文](https://developers.weixin.qq.com/community/develop/article/doc/000646963b46a02ab4f1bee1e62813) | [官方](https://mp.weixin.qq.com/s/Qr30_lM9bue9VYTrmdRqdA) | [转载](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/3.md) |
-| 4        | 点表示法与前端缓存 | [原文](https://developers.weixin.qq.com/community/minihome/article/doc/000e6e2be848e898f202a63be61813) |  | [转载](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/4.md) |
-| 5        | 未完待续... | | | []() |
+| 0        | 为什么你应该立即使用云开发写小程序？ | [原文](https://developers.weixin.qq.com/community/develop/article/doc/0002e44c61cf8061cbb1f3f7a61c13) | [官方](https://mp.weixin.qq.com/s/Ucnlyjcc6ceAuoLLiG6ktg) | [.md](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/0.md) |
+| 1        | 初识云开发数据库 | [原文](https://developers.weixin.qq.com/community/develop/article/doc/0004c2049e8400240fd1706046b813) | [官方](https://mp.weixin.qq.com/s/hqwqXloTYnkG4pesFVpFrA) | [.md](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/1.md) |
+| 2        | 云数据库基础读写工具函数 | [原文](https://developers.weixin.qq.com/community/develop/article/doc/000ae817a84f480025e1480d96b813) | [官方](https://mp.weixin.qq.com/s/XH6YHFpGUWM-ZD641FgsZg) | [.md](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/2.md) |
+| 3        | 高级数据库工具函数 | [原文](https://developers.weixin.qq.com/community/develop/article/doc/000646963b46a02ab4f1bee1e62813) | [官方](https://mp.weixin.qq.com/s/Qr30_lM9bue9VYTrmdRqdA) | [.md](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/3.md) |
+| 4        | 点表示法与前端缓存 | [原文](https://developers.weixin.qq.com/community/minihome/article/doc/000e6e2be848e898f202a63be61813) |  | [.md](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/4.md) |
+| 5        | 大幅降低微信小程序云数据库的调用次数和成本费用 | [原文](https://developers.weixin.qq.com/community/develop/article/doc/000e6aed4409e84015325f09360013) | | [.md](https://github.com/sdjl/WxMpCloudBooster/blob/main/articles/5.md) |
+| 6        | 未完待续... | | | []() |
 
 
 ## 两个主要代码资源

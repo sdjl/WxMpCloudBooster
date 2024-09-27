@@ -1,0 +1,43 @@
+<view class="weui-form">
+
+  <view class="weui-form__text-area">
+    <view class="weui-form__title">用户设置</view>
+  </view>
+
+  <view class="weui-form__control-area">
+    <view class="weui-cells__group weui-cells__group_form">
+      <view class="weui-cells">
+
+        <checkbox-group bind:change="checkboxChange" class="mb-5">
+
+          <label class="weui-cell weui-cell_active weui-cell_switch" >
+            <view class="weui-cell__bd">使用大字体</view>
+            <view class="weui-cell__ft">
+              <view>
+                <checkbox class="weui-switch-cp__input" checked="{{page.big_font}}" value="big_font" />
+                <view class="weui-switch-cp__box"></view>
+              </view>
+            </view>
+          </label>
+
+          <label class="weui-cell weui-cell_active weui-cell_switch" >
+            <view class="weui-cell__bd">显示已完成todo</view>
+            <view class="weui-cell__ft">
+              <view>
+                <checkbox class="weui-switch-cp__input" checked="{{page.show_completed}}" value="show_completed" />
+                <view class="weui-switch-cp__box"></view>
+              </view>
+            </view>
+          </label>
+
+        </checkbox-group>
+
+      </view>
+    </view>
+  </view>
+
+  <view class="weui-form__opr-area">
+    <navigator url="/pages/todo/todo" class="weui-btn weui-btn_primary">返回</navigator>
+  </view>
+
+</view>

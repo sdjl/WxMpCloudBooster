@@ -1,7 +1,8 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/todo/todo"
+    "pages/todo/todo",
+    "pages/user_config/user_config"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",

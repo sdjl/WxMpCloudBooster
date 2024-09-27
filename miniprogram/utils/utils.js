@@ -196,6 +196,12 @@ const utils = {
    * 等待wx.cloud初始化完成后再执行后续操作。
    * @returns {Promise<void>} 返回一个Promise，当cloud初始化完成时resolve。
    *
+   * 注意
+   *   使用此函数需在app.js文件的onLaunch方法中使用如下的代码初始化云环境对象：
+   *   this.cloud.init().then(() => {
+   *      _.globalData.running._set_cloud_ready = _.globalData.running.is_cloud_ready = true
+   *   })
+   *
    * @example
    *   // 通常在Page.onLoad()中使用，确保云服务已准备就绪
    *   onLoad(options){
@@ -432,6 +438,65 @@ const utils = {
   },
 
   /**
+   * 类似 `getDoc`，但内部使用聚合查询来获取文档。
+   * `getDoc` 只能读取1M以下的文档，而本函数支持读取5M以内的单个文档。
+   * 
+   * @param {string} c - 集合名称。
+   * @param {string} id - 文档的ID。
+   * @param {Object} options - 配置选项，包括：
+   *   - {string} only - 仅返回的字段，多个字段用逗号分隔，如：'title, content'。
+   *   - {string} except - 不返回的字段。
+   *   - {boolean} mine - 是否仅查询用户自己的数据，默认为 `false`。
+   * 
+   * @returns {Promise<Object|null>} 返回一个 Promise 对象，解析为匹配的文档或 `null`。
+   * 
+   * 注意：
+   *   1. `only` 和 `except` 也是支持点表示法的，如'page.title, page.content'。
+   */
+  getDocByAgg(c, id, { only = '', except = '', mine = false} = {}) {
+    const _ = this
+    return new Promise(async (resolve, reject) => {
+      _.allDocs({
+        c,
+        match: { _id: id },
+        only,
+        except,
+        mine,
+        page_size: 1,
+        limit: 1,
+        show_loading: false,
+      }).then(docs => {
+        if (docs.length > 0) {
+          resolve(docs[0])
+        } else {
+          resolve(null)
+        }
+      }).catch(reject)
+    })
+  },
+
+  /**
+   * 获取当前用户指定ID的文档。
+   * 
+   * 此函数类似于 `getDocByAgg`，但自动设置 `mine` 参数为 `true`，确保只查询当前用户的数据。
+   * `getMyDoc` 只能读取1M以下的文档，而本函数支持读取5M以内的单个文档。
+   * 
+   * @param {string} c - 集合名称。
+   * @param {string} id - 文档的ID。
+   * @param {Object} options - 配置选项，包括：
+   *   - {string} only - 仅返回的字段，多个字段用逗号分隔，如：'title, content'。
+   *   - {string} except - 不返回的字段。
+   * 
+   * @returns {Promise<Object|null>} 返回一个 Promise 对象，解析为匹配的文档或 `null`。
+   * 
+   * 注意：
+   *   1. `only` 和 `except` 也是支持点表示法的，如'page.title, page.content'。
+   */
+  getMyDocByAgg(c, id, options = {}) {
+    return this.getDocByAgg(c, id, { ...options, mine: true })
+  },
+
+  /**
    * 通过查询条件获取第一个匹配的文档
    * 
    * 如果启用last选项，则返回按index字段降序排列的最新文档。
@@ -487,8 +552,76 @@ const utils = {
    * 
    * @returns {Promise<Object|null>} Promise对象，解析为文档或null。
    */
-  getMyOne(c, w, options) {
+  getMyOne(c, w, options = {}) {
     return this.getOne(c, w, {...options, mine: true})
+  },
+
+  /**
+   * 与 `getOne` 类似，通过聚合查询条件获取第一个匹配的文档
+   * 
+   * `getOne`只能读取1M以下的文档，本函数使用聚合查询支持读取5M以内的单个文档。
+   * 
+   * @param {string} c - 集合名称。
+   * @param {Object} match - 聚合查询的匹配条件，类似于 `where` 的查询条件。
+   * @param {Object} options - 配置选项，包括：
+   *   - {string} only - 仅返回的字段，多个字段用逗号分隔，如：'title, content'。
+   *   - {string} except - 不返回的字段。
+   *   - {boolean} mine - 是否仅查询用户自己的数据，默认为 `false`。
+   *   - {Object} sort - 排序规则，支持点表示法，如：{ 'a.b.c': 1, 'd.e.f': 'desc' }。
+   * 
+   * @returns {Promise<Object|null>} 返回一个 Promise 对象，解析为匹配的文档或 `null`。
+   * 
+   * @example
+   *   utils.getOneByAgg('todo', { status: '未完成' }, { only: 'title, status' })
+   *     .then(doc => {
+   *       if (doc) {
+   *         console.log('找到的文档:', doc)
+   *       } else {
+   *         console.log('未找到匹配的文档')
+   *       }
+   *     })
+   * 
+   * 注意：
+   *   1. `only` 和 `except` 也是支持点表示法的，如'page.title, page.content'。
+   */
+  getOneByAgg(c, match, {only = '', except = '', mine = false, sort = {_id: 1} } = {}) {
+    const _ = this
+    return new Promise(async (resolve, reject) => {
+      _.allDocs({
+        c,
+        match,
+        only,
+        except,
+        mine,
+        page_size: 1,
+        limit: 1,
+        show_loading: false,
+        sort,
+        project: {},
+      }).then(docs => {
+        if (docs.length > 0) {
+          resolve(docs[0])
+        } else {
+          resolve(null)
+        }
+      }).catch(reject)
+    })
+  },
+
+  /**
+   * 此函数类似于 `getOneByAgg`，但自动设置 `mine` 参数为 `true`，确保只查询当前用户的数据。
+   * 
+   * @param {string} c - 集合名称。
+   * @param {Object} match - 聚合查询的匹配条件，类似于 `where` 的查询条件。
+   * @param {Object} options - 配置选项，包括：
+   *   - {string} only - 仅返回的字段，多个字段用逗号分隔，如：'title, content'。
+   *   - {string} except - 不返回的字段。
+   *   - {Object} sort - 排序规则，支持点表示法，如：{ 'a.b.c': 1, 'd.e.f': 'desc' }。
+   * 
+   * @returns {Promise<Object|null>} 返回一个 Promise 对象，解析为匹配的文档或 `null`。
+   */
+  getMyOneByAgg(c, match, options= {}) {
+    return this.getOneByAgg(c, match, {...options, mine: true})
   },
 
   /**
@@ -1441,6 +1574,23 @@ const utils = {
    *   通常情况下，你需要把对象的字节数保存到一个 size_k 的字段中，这时需要把这个字段的字节数也计算在内。
    *   当 add_key_bytes 为true时，默认增加20个字节，用于增加 size_k 的字节数（估算值）。
    * @returns {number} 返回计算后的字节长度
+   *
+   * 如何判断此函数是否精准？
+   *   首先，使用updateDoc函数时，如果文档超过了512K，微信开发者工具会报错，并提示“不可以超过512K”
+   *   然后，使用下面的代码尝试写入一个数据：
+   *     let data = []
+   *     for (let i = 0; i < 66900; i++) {
+   *       data.push(i.toString())
+   *     }
+   *     console.log(`write ${utils.getKLen(data)}k`)
+   *     await utils.updateMyDoc(coll, id, {data})
+   *   此时，控制台会输出“write 511.8k”，此时可以正常写入数据。
+   *   然后，把for循环的66900改成67000，再次运行，控制台会输出“write 512.6k”，此时会报错，并提示“不可以超过512K”。
+   * 
+   * 注意
+   *   1. 此函数的结果会有一定的误差。
+   *   2. 特别是当data不是一个纯数组，而是一个对象，并且内部有许多对象的属性时，计算出来的字节数会比实际的要小。
+   *   3. 如果你有更好的方法，请告诉我，谢谢！sdjllyh@gmail.com
    */
   getByteLen (obj, add_key_bytes = false) {
     // 如果obj不是字符串,则json化
@@ -3237,7 +3387,7 @@ const utils = {
 
   /**
    * 在数据库和本地存储中写入用户配置数据
-   * @param {string} c - 指定集合名称和本地存储键名，通常形式为{app}_user，如admin_user
+   * @param {string} c - 集合名称，通常形式为{app}_user，如admin_user
    * @param {string} key - 用户配置项的键，支持点表示法，如'a.b.c'
    * @param {any} value - 配置项的值
    * @param {Object} options - 配置选项:
@@ -3251,12 +3401,13 @@ const utils = {
    *   3. 支持使用undefined值来删除数据项
    *   4. 必须确保c参数指定的集合存在，用于保存用户的私有数据
    *   5. 用户的value数据不能超过512K
-   *   6. 用户配置只能在前端写入，以保证数据的同步
+   *   6. 用户配置只能在前端写入，请勿在云函数中修改用户配置，以保证数据的同步
    *
    * 调用次数
-   *   1. value变动时，会写1次数据库，会消耗1次调用次数
-   *   2. value未变动时，不会写数据库，不消耗调用次数
+   *   1. value改变时，会写1次数据库，会消耗1次调用次数
+   *   2. value未改变时，不会写数据库，不消耗调用次数
    *   3. 指定skip_equal=true时会跳过判断值是否变动，直接写数据库，会消耗1次调用次数
+   *   4. 当前端Storage不存在时，会先读取一次数据库，此时会多消耗1次调用次数
    *   
    * @example
    *   utils.setUserConfig('admin_user', 'theme.color', 'light').then(changed => {
@@ -3280,7 +3431,7 @@ const utils = {
           // 本地缓存与value不相等时，才更新数据库（减少次数）
           if (skip_equal || !_.isEqual(_.pickValue(data, key), value)) {
             _.putValue(data, key, value, {remove_undefined: false})
-            _._saveUserConfigToStorageAndCloudDB(c, data, {encrypt}).then(() => {
+            _._saveUserConfigToStorageAndCloudDB(c, data, {encrypt, write_keys: [key]}).then(() => {
               resolve(true)
             }).catch(reject)
           } else {
@@ -3290,7 +3441,7 @@ const utils = {
 
       // 本地没有缓存，先读一下数据库中是否有数据
         .catch(() => {
-          _.getMyOne(c, {})
+          _.getMyOneByAgg(c, {})
             .then(doc => {
               // 数据库没有数据时新建
               if (!doc) {
@@ -3298,7 +3449,7 @@ const utils = {
               }
               if (skip_equal || !_.isEqual(_.pickValue(doc, key), value)) {
                 _.putValue(doc, key, value, {remove_undefined: false})
-                _._saveUserConfigToStorageAndCloudDB(c, doc, {encrypt}).then(() => {
+                _._saveUserConfigToStorageAndCloudDB(c, doc, {encrypt, write_keys: [key]}).then(() => {
                   resolve(true)
                 }).catch(reject)
               } else {
@@ -3317,189 +3468,11 @@ const utils = {
   },
 
   /**
-   * 传入一个对象，设置多个用户配置。
-   * 
-   * @param {string} c 用户配置的key值
-   * @param {Object} obj 用户配置对象
-   * @param {Object} options 包含以下属性的对象:
-   *   - {boolean} skip_equal - 默认为 `false`，当为 `true` 时，不对存储进行比较，直接写入数据库
-   *   - {boolean} encrypt - 默认为 `true`，是否对存储进行加密处理
-   * @returns {Promise<boolean>} 返回一个Promise，当成功时，返回 `true`；当失败时，返回 `false`。
-   * 
-   * 说明：
-   * 1. `obj` 的 `value` 为 `undefined` 时，可以删除用户配置。
-   * 2. 在 `onUnload` 中使用时记得添加await，如 `await utils.setUserConfigObj`。
-   * 3. 当 `changed` 为 `true` 时，表示修改了本地存储或数据库。此函数 `obj` 参数的 `key` 的数量和调用次数无关。
-   *
-   * @example
-   * await utils.setUserConfigObj('key', {subKey: 'value'})
-   */
-  setUserConfigObj (c, obj, {skip_equal = false, encrypt = true} = {}) {
-    const _ = this
-    const storage_key = 's_' + c
-    const obj_keys = Object.keys(obj)
-    return new Promise((resolve, reject) => {
-
-      // 获得本地缓存数据
-      _.getStorage(storage_key, encrypt)
-
-      // 本地有缓存（以本地缓存为准）
-        .then(data => {
-          /* 本地缓存与obj不相等时，才更新数据库（减少次数） 
-             不要使用整个对象比较，仅比较obj中的key，使用some判断当obj中某一个value与data不同时，才更新数据库
-             */
-          if (skip_equal || obj_keys.some(key => !_.isEqual(_.pickValue(data, key), obj[key]))) {
-            for (let key in obj) {
-              _.putValue(data, key, obj[key], {remove_undefined: false})
-            }
-            _._saveUserConfigToStorageAndCloudDB(c, data, {encrypt}).then(() => {
-              resolve(true)
-            }).catch(reject)
-          } else {
-            resolve(false)
-          }
-        })
-
-      // 本地没有缓存，先读一下数据库中是否有数据
-        .catch(() => {
-          _.getMyOne(c, {})
-            .then(doc => {
-              // 数据库没有数据时新建
-              if (!doc) {
-                doc = c.endsWith('_user') ? {is_admin: false} : {}
-              }
-              _.putValue(doc, '_openid', undefined) // 需要先删除_openid再和obj比较
-              _.putValue(doc, '_id', undefined)
-              if (skip_equal || obj_keys.some(key => !_.isEqual(_.pickValue(doc, key), obj[key]))) {
-                for (let key in obj) {
-                  _.putValue(doc, key, obj[key], {remove_undefined: false})
-                }
-                _._saveUserConfigToStorageAndCloudDB(c, doc, {encrypt}).then(() => {
-                  resolve(true)
-                }).catch(reject)
-              } else {
-                _.setStorage(storage_key, doc, encrypt)
-                  .then(() => {
-                    resolve(true)
-                  })
-                  .catch(e => { reject({errno: 'setUserConfigObj Failed', errMsg: `调用setStorage时失败`, e}) })
-              }
-            })
-        })
-
-    })
-  },
-
-  /**
-   * 把用户配置先放入缓冲区，用 `flushUserConfigBuffer` 函数一次性写入，以减少数据库调用次数。
-   * 
-   * @param {string} c 用户配置的key值
-   * @param {string} key 配置项的键名，支持点表示法，如'a.b.c'
-   * @param {any} value 配置项的值
-   * 
-   * 说明：
-   *   1. 在设置页面，可先调用此函数，然后在 `onUnload` 事件中使用 `await utils.flushUserConfigBuffer()`。
-   *   2. 此函数只会修改缓冲区，不会修改数据库，从而不消耗调用次数。
-   *   3. 直至调用 `flushUserConfigBuffer` 函数后，才会修改本地存储和数据库。
-   *
-   * @example
-   *   utils.setUserConfigBuffer('admin_user', 'a.b.c', 'value') // 将配置项放入缓冲区
-   */
-  setUserConfigBuffer (c, key, value) {
-    const _ = this
-    const buffer = _._user_config_buffer
-    // 确保_user_config_buffer[c]存在，且是一个对象
-    if (!_.isObject(buffer[c])) { buffer[c] = {} }
-    /* 注意，这里不能使用_.putValue，当c是点表示法时需要逐一保存
-       举例说明，若使用_.putValue，当key等于a.b时，buffer[c]会变成{a: {b: value}}
-       此时当调用flushUserConfigBuffer时，data.a会被替换为{b: value}，导致a的其他数据丢失
-       */
-    buffer[c][key] = value // 这里不能使用_.putValue
-  },
-
-  /**
-   * 把用户配置缓冲区中的数据一次性写入数据库。
-   * 
-   * @param {string} c 用户配置的key值
-   * @param {Object} options 包含以下属性的对象:
-   *   - {boolean} encrypt - 默认为 `true`，是否对存储进行加密处理
-   * @returns {Promise} 返回一个Promise，当成功时，返回 `undefined`；当失败时，返回错误信息。
-   *
-   * 说明：
-   *   1. 此函数没有 `skip_equal` 功能，总是会写入数据库。
-   *   2. 次函数仅消耗1次调用次数，不管缓冲区中有多少数据。
-   *   3. 当缓冲区没有数据时，不会消耗调用次数。
-   * 
-   * @example
-   *   utils.flushUserConfigBuffer('admin_user') // 一次性将缓冲区中的数据写入数据库
-   */
-  flushUserConfigBuffer (c, {encrypt = true} = {}) {
-    const _ = this
-    const storage_key = 's_' + c
-    const buffer = _._user_config_buffer[c]
-    if (!_.isObject(buffer) || _.isEmpty(buffer)) {
-      return Promise.resolve()
-    }
-    return new Promise((resolve, reject) => {
-
-      // 获得本地缓存数据
-      _.getStorage(storage_key, encrypt)
-
-      // 本地有缓存（以本地缓存为准）
-        .then(data => {
-          // 把buffer的每一个值put到data中
-          for (const key in buffer) {
-            _.putValue(data, key, buffer[key], {remove_undefined: false})
-          }
-          _._saveUserConfigToStorageAndCloudDB(c, data, {encrypt}).then(() => {
-            _.clearUserConfigBuffer(c)
-            resolve()
-          }).catch(reject)
-        })
-
-      // 本地没有缓存，先读一下数据库中是否有数据
-        .catch(() => {
-          _.getMyOne(c, {})
-            .then(doc => {
-              // 数据库没有数据时新建
-              if (!doc) {
-                doc = c.endsWith('_user') ? {is_admin: false} : {}
-              }
-              for (const key in buffer) {
-                _.putValue(doc, key, buffer[key], {remove_undefined: false})
-              }
-              _._saveUserConfigToStorageAndCloudDB(c, doc, {encrypt}).then(() => {
-                _.clearUserConfigBuffer(c)
-                resolve()
-              }).catch(reject)
-            })
-        })
-    })
-  },
-
-  /**
-   * 清空用户配置缓冲区。当 `c` 为 `null` 时，清空所有缓冲区。
-   * 
-   * @param {string|null} c - 用户配置的key值，当为 `null` 时，清空所有缓冲区
-   * 
-   * @example
-   *   utils.clearUserConfigBuffer('admin_user') // 清空指定的缓冲区
-   *   utils.clearUserConfigBuffer(null) // 清空所有缓冲区
-   */
-  clearUserConfigBuffer (c = null) {
-    const _ = this
-    if (c === null) {
-      _._user_config_buffer = {}
-    } else {
-      delete _._user_config_buffer[c]
-    }
-  },
-
-  /**
    * 从数据库中读取用户配置，如果没有本地缓存，则读取数据库。
    * 若数据库中也没有，则返回 `null`，并缓存到本地。
+   * 最大支持读取5M的数据（使用了聚合查询）
    * 
-   * @param {string} c - 用户配置的key值
+   * @param {string} c - 集合名称，通常形式为{app}_user，如admin_user
    * @param {string} key - 配置项的键名，支持 'a.b.c' 的形式。
    * @param {Object} options - 包含以下属性的对象:
    *   - {any} default_value - 默认值，当配置项不存在时，返回此值
@@ -3507,12 +3480,11 @@ const utils = {
    * @returns {Promise<any>} 返回一个Promise，当成功时，返回配置项的值（可能为 `undefined`）；当失败时，返回错误信息。
    *
    * 注意:
-   *   1. 一定要对返回结果进行判断，可能会出现 `undefined` 的情况。
-   *   2. 如果有本地缓存对象，但读取的 `key` 不存在，则返回 `default_value`，且不读取数据库。
-   *   3. 当你在云函数中修改用户配置时就可能出现情况2，因此请勿在云函数中修改用户配置。
+   *   1. 如果有本地缓存对象，但读取的 `key` 不存在，则返回 `default_value`，且不读取数据库。
+   *   2. 当你在云函数中修改用户配置时就可能出现情况2，因此请勿在云函数中修改用户配置。
    * 
    * @example
-   *   utils.getUserConfig('key', 'subKey', {default_value: 'default', encrypt: true}) // 读取用户配置
+   *   utils.getUserConfig('key', 'a.b.c', {default_value: 1, encrypt: true}) // 读取用户配置
    */
   getUserConfig (c, key, {default_value = null, encrypt = true} = {}) {
     const _ = this
@@ -3522,7 +3494,7 @@ const utils = {
       // 如本地app开发时应该是a，但设置成了b，可能会用本地缓存去更新数据库b_user
 
       function _loadFromCloud() {
-        _.getMyOne(c, {})
+        _.getMyOneByAgg(c, {})
           .then(doc => {
             // 数据库中有数据
             if (doc) {
@@ -3560,23 +3532,398 @@ const utils = {
   },
 
   /**
+   * 向用户配置数组末尾添加一个元素
+   * 
+   * @param {string} c - 集合名称，通常形式为{app}_user，如admin_user
+   * @param {string} key - 配置项的键名，必须是数组或未定义，支持点表示法，如'a.b.c'
+   * @param {any} value - 要添加的元素
+   * @param {Object} options - 包含以下属性的对象:
+   *   - {boolean} encrypt - 默认为 `true`，是否对存储进行加密处理
+   *   - {boolean} allow_repeats - 默认为 `true`，是否允许重复
+   *   - {number|null} limit - 数组最大长度，超过该长度时，会删除前面的元素
+   *   - {boolean} prepend - 默认为 `false`，是否添加到数组的最前面
+   * @returns {Promise<Array>} 返回一个Promise，当成功时，返回修改后的数组；当失败时，返回错误信息
+   * 
+   * 注意
+   *   1. 当 `allow_repeats` 为 `false` 时，若数组中已有该元素时，不会再添加
+   *   2. 当 `allow_repeats` 为 `false` 且 `value` 是对象时，会根据 `_id` 去重复
+   *   3. 当 `prepend` 为 `true` 且使用了 `limit` 时，数量超过 `limit` 时会删除最后面的元素
+   *
+   * 调用次数
+   *   1. 此函数几乎每次调用都会写入数据库，会消耗1次调用次数
+   *   2. 当前端Storage不存在时，会先读取一次数据库，此时会多消耗1次调用次数
+   * 
+   * @example
+   *   utils.pushUserConfig('admin_user', 'arr_key_path', 'value')
+   */
+  pushUserConfig (c, key, value, {encrypt = true, allow_repeats = true, limit = null, prepend = false} = {}) {
+    const _ = this
+    return new Promise((resolve, reject) => {
+      _.getUserConfig(c, key, {encrypt})
+        .then(data => {
+          if (_.isNone(data)) { data = [] }
+          if (Array.isArray(data)) {
+            // 不允许重复时，如果添加的元素重复
+            if (!allow_repeats
+              && ( (_.isObject(value) && _.includesDoc(data, value))
+                || data.includes(value) )
+            ) {
+              if (prepend) {
+                // 检查元素是否在数组的第一位
+                const index = _.isObject(value) ? _.docIndexOf(data, value) : data.indexOf(value)
+                if (index === 0 && (limit === null || data.length < limit)) {
+                  if (_.isEqual(data[0], value)) {
+                    resolve(data)
+                  } else {
+                    data[0] = value
+                    _.setUserConfig(c, key, data, {encrypt})
+                      .then(() => { resolve(data) })
+                      .catch(e => { reject({errno: 'pushUserConfig Failed', errMsg: `调用setUserConfig时失败`, e}) })
+                  }
+                  return
+                }
+                // 移除元素
+                data.splice(index, 1)
+                // 添加到数组的最前面
+                data.unshift(value)
+              } else {
+                // 检查元素是否在数组的最后一位
+                const index = _.isObject(value) ? _.docIndexOf(data, value) : data.indexOf(value)
+                if (index === data.length - 1 && (limit === null || data.length < limit)) {
+                  if (_.isEqual(data[data.length - 1], value)) {
+                    resolve(data)
+                  } else {
+                    data[data.length - 1] = value
+                    _.setUserConfig(c, key, data, {encrypt})
+                      .then(() => { resolve(data) })
+                      .catch(e => { reject({errno: 'pushUserConfig Failed', errMsg: `调用setUserConfig时失败`, e}) })
+                  }
+                  return
+                }
+                // 移除元素
+                data.splice(index, 1)
+                // 添加到数组的最后面
+                data.push(value)
+              }
+            } else {
+              // 允许重复或数组中不存在该元素时
+              if (prepend) {
+                data.unshift(value)
+              } else {
+                data.push(value)
+              }
+            }
+            // 数组长度超过限制时，删除多余的元素
+            if (limit && data.length > limit) {
+              if (prepend) {
+                data = data.slice(0, limit)
+              } else {
+                data = data.slice(data.length - limit)
+              }
+            }
+            // 保存到数据库
+            _.setUserConfig(c, key, data, {encrypt})
+              .then(() => { resolve(data) })
+              .catch(e => { reject({errno: 'pushUserConfig Failed', errMsg: `调用setUserConfig时失败`, e}) })
+          } else {
+            reject({errno: 'pushUserConfig Failed', errMsg: `配置项${key}不是数组`})
+          }
+        })
+        .catch(e => { reject({errno: 'pushUserConfig Failed', errMsg: `调用getUserConfig时失败`, e}) })
+    })
+  },
+
+  /**
+   * 从用户配置数组中删除一个或多个匹配的元素，返回删除的元素个数。
+   * 
+   * @param {string} c - 集合名称，通常形式为{app}_user，如admin_user
+   * @param {string} key - 配置项的键名，必须是数组或未定义，支持点表示法，如'a.b.c'
+   * @param {any} value - 要删除的元素
+   * @param {Object} options - 包含以下属性的对象:
+   *   - {boolean} encrypt - 默认为 `true`，是否对存储进行加密处理
+   *   - {boolean} prepend - 默认为 `false`，是否从数组的最前面删除，默认从最后面删除
+   *   - {number} limit - 最多删除的元素个数，默认为1。设置为null或0时，删除所有匹配的元素
+   *   - {boolean} match_by_id - 默认为 `true`，当value是对象时，会根据 _id 删除
+   * @returns {Promise<number>} 返回一个Promise，当成功时，返回删除的元素个数；当失败时，返回错误信息。
+   * 
+   * 调用次数
+   *   1. 此函数几乎每次调用都会写入数据库，会消耗1次调用次数。
+   *   2. 未找到任何元素，未删除时，不消耗调用次数。
+   *   3. 当前端Storage不存在时，会先读取一次数据库，此时会多消耗1次调用次数。
+   *
+   * 注意
+   *   1. limit为null或0时，删除所有匹配的元素
+   *   2. 当数组元素是对象时，默认情况会根据 _id 删除，如果不需要根据 _id 删除，可以设置 match_by_id 为 false
+   * 
+   * @example
+   *   utils.pluckUserConfig('admin_user', 'arr_key_path', 'value')
+   */
+  pluckUserConfig (c, key, value, {encrypt = true, prepend = false, limit = 1, match_by_id = true} = {}) {
+    const _ = this
+    return new Promise((resolve, reject) => {
+      _.getUserConfig(c, key, {encrypt})
+        .then(data => {
+          if (_.isNone(data)) { data = [] }
+          if (Array.isArray(data)) {
+
+            let remove_count = 0 // 记录已删除的元素数量
+            const indices_to_remove = [] // 存储需要删除的元素索引
+
+            // 如果 limit 为 null 或 0 ，则删除所有匹配的元素
+            if (limit === null || limit === 0) {
+              limit = data.length
+            }
+
+            // 从前面或后面开始删除元素
+            const start_index = prepend ? 0 : data.length - 1
+            const step = prepend ? 1 : -1
+
+            for (let i = start_index; prepend ? (i < data.length && remove_count < limit) : (i >= 0 && remove_count < limit); i += step) {
+              const item = data[i]
+
+              // 判断当前元素是否匹配需要删除的值
+              let is_match = false
+              if (match_by_id && _.isObject(value) && _.isObject(item)) {
+                const id1 = _.pickValue(item, '_id')
+                const id2 = _.pickValue(value, '_id')
+                is_match = id1 === id2 && _.isString(id1) && !_.isEmpty(id1)
+              } else {
+                is_match = _.isEqual(item, value)
+              }
+
+              if (is_match) {
+                indices_to_remove.push(i) // 记录匹配的索引
+                remove_count++ // 增加删除计数
+              }
+            }
+
+            // 按从高到低的顺序排序索引，防止删除时影响后续索引
+            indices_to_remove.sort((a, b) => b - a)
+
+            // 删除匹配的元素
+            for (const idx of indices_to_remove) {
+              data.splice(idx, 1)
+            }
+
+            // 如果有元素被删除，则更新用户配置
+            if (remove_count > 0) {
+              _.setUserConfig(c, key, data, {encrypt})
+                .then(() => { 
+                  resolve(remove_count) // 返回删除的元素数量
+                })
+                .catch(e => { 
+                  reject({errno: 'removeFromArrayConfig Failed', errMsg: `调用setUserConfig时失败`, e}) 
+                })
+            } else {
+              // 如果没有元素被删除，返回0
+              resolve(0)
+            }
+
+          } else {
+            reject({errno: 'pluckUserConfig Failed', errMsg: `配置项${key}不是数组`})
+          }
+        })
+        .catch(e => { reject({errno: 'pluckUserConfig Failed', errMsg: `调用getUserConfig时失败`, e}) })
+    })
+  },
+
+  /**
+   * 从用户配置数组中取出一个或多个元素，返回取出的元素或元素数组。
+   * 
+   * @param {string} c - 集合名称，通常形式为{app}_user，如admin_user
+   * @param {string} key - 配置项的键名，必须是数组或未定义，支持点表示法，如'a.b.c'
+   * @param {Object} options - 包含以下属性的对象:
+   *   - {boolean} encrypt - 默认为 `true`，是否对存储进行加密处理
+   *   - {boolean} prepend - 默认为 `false`，是否从数组的最前面取出元素，默认从最后面取出
+   *   - {number} count - 要取出的元素个数，默认为1
+   * @returns {Promise<Array>} 返回一个Promise，当count=1时，返回取出的元素；当count>1时，返回取出的元素数组；
+   * 
+   * 调用次数
+   *   1. 此函数几乎每次调用都会写入数据库，会消耗1次调用次数。
+   *   2. 数组为空或count=0时，会返回undefined，不消耗调用次数。
+   *   3. count大于1时，也只消耗1次调用次数。
+   *   4. 当前端Storage不存在时，会先读取一次数据库，此时会多消耗1次调用次数。
+   *
+   * 注意
+   *   1. 当 `count` 大于数组长度时，取出所有可用的元素。
+   *   2. 当 `prepend` 为 `false` 时，取出的元素顺序与数组中相应部分的顺序相反。例如，数组为 [1,2,3,4,5]，count=3，prepend=false 时，返回 [5,4,3]。
+   *   3. 当 `prepend` 为 `true` 时，取出的元素顺序与数组中相应部分的顺序相同。例如，数组为 [1,2,3,4,5]，count=3，prepend=true 时，返回 [1,2,3]。
+   *   4. 如果配置项 `key` 不是数组，则返回错误。
+   * 
+   * @example
+   *   utils.pullUserConfig('admin_user', 'arr_key_path', {prepend: false, count: 3}).then(pulled => {
+   *     console.log(pulled) // 可能输出 [5,4,3]
+   *   })
+   */
+  pullUserConfig (c, key, {encrypt = true, prepend = false, count = 1} = {}) {
+    const _ = this
+    return new Promise((resolve, reject) => {
+      // 获取指定用户配置的数组数据
+      _.getUserConfig(c, key, {encrypt})
+        .then(data => {
+          // 如果数据为null或undefined，初始化为空数组
+          if (_.isNone(data)) { data = [] }
+
+          // 确保目标配置项是一个数组
+          if (Array.isArray(data)) {
+            // 确定实际需要取出的元素个数，不超过数组长度
+            const actual_count = Math.min(count, data.length)
+            let pulled_elements = []
+
+            if (prepend) {
+              // 从数组前端取出元素
+              pulled_elements = data.slice(0, actual_count)
+              // 从数组中移除取出的元素
+              data.splice(0, actual_count)
+            } else {
+              // 从数组末端取出元素，并保持取出元素的顺序相反
+              pulled_elements = data.slice(-actual_count).reverse()
+              // 从数组中移除取出的元素
+              data.splice(data.length - actual_count, actual_count)
+            }
+
+            if (pulled_elements.length > 0) {
+              // 更新用户配置数组
+              _.setUserConfig(c, key, data, {encrypt})
+                .then(() => {
+                  // 返回取出的元素
+                  if (count === 1) {
+                    resolve(pulled_elements[0])
+                  } else {
+                    resolve(pulled_elements)
+                  }
+                })
+                .catch(e => {
+                  reject({errno: 'pullUserConfig Failed', errMsg: `调用setUserConfig时失败`, e})
+                })
+            } else {
+              if (count === 1) {
+                resolve(undefined)
+              } else {
+                resolve([])
+              }
+            }
+
+          } else {
+            // 如果目标配置项不是数组，则返回错误
+            reject({errno: 'pullUserConfig Failed', errMsg: `配置项${key}不是数组`})
+          }
+        })
+        .catch(e => { 
+          // 处理获取用户配置时的错误
+          reject({errno: 'pullUserConfig Failed', errMsg: `调用getUserConfig时失败`, e}) 
+        })
+    })
+  },
+
+  /**
+   * 传入一个对象，设置多个用户配置值。
+   * 
+   * @param {string} c - 集合名称，通常形式为{app}_user，如admin_user
+   * @param {Object} obj 用户配置对象，其中key支持点表示法，如 { 'a.b.c': 'value' }
+   * @param {Object} options 包含以下属性的对象:
+   *   - {boolean} skip_equal - 默认为 `false`，当为 `true` 时，不对存储进行比较，直接写入数据库
+   *   - {boolean} encrypt - 默认为 `true`，是否对存储进行加密处理
+   * @returns {Promise<boolean>} 返回一个Promise，当成功时，返回 `true`；当失败时，返回 `false`。
+   * 
+   * 说明
+   *   1. `obj` 的 `value` 为 `undefined` 时，可以删除用户配置。
+   *   2. 在 `onUnload` 中使用时记得添加await，如 `await utils.setUserConfigObj`，否则可能导致写入数据库失败。
+   *   3. 当 `changed` 为 `true` 时，表示修改了本地存储或数据库。
+   *
+   * 调用次数
+   *   1. obj中有任何一个value改变时，会写1次数据库，会消耗1次调用次数
+   *   2. obj中的所有value均未改变时，不会写数据库，不消耗调用次数
+   *   3. 指定skip_equal=true时会跳过判断值是否变动，直接写数据库，会消耗1次调用次数
+   *   4. 当obj中有多个value改变时，仅消耗1次调用次数
+   *   5. 当前端Storage不存在时，会先读取一次数据库，此时会多消耗1次调用次数
+   *
+   * @example
+   *   await utils.setUserConfigObj('key', {path: 'value', 'a.b.c': 1})
+   */
+  setUserConfigObj (c, obj, {skip_equal = false, encrypt = true} = {}) {
+    const _ = this
+    const storage_key = 's_' + c
+    const obj_keys = Object.keys(obj)
+    return new Promise((resolve, reject) => {
+
+      // 获得本地缓存数据
+      _.getStorage(storage_key, encrypt)
+
+      // 本地有缓存（以本地缓存为准）
+        .then(data => {
+          let write_keys
+          if (skip_equal) {
+            write_keys = obj_keys
+          } else {
+            write_keys = obj_keys.filter(key => !_.isEqual(_.pickValue(data, key), obj[key]))
+          }
+          if (skip_equal || write_keys.length > 0) {
+            for (let key in obj) {
+              _.putValue(data, key, obj[key], {remove_undefined: false})
+            }
+            _._saveUserConfigToStorageAndCloudDB(c, data, {encrypt, write_keys}).then(() => {
+              resolve(true)
+            }).catch(reject)
+          } else {
+            resolve(false)
+          }
+        })
+
+      // 本地没有缓存，先读一下数据库中是否有数据
+        .catch(() => {
+          _.getMyOneByAgg(c, {})
+            .then(doc => {
+              // 数据库没有数据时新建
+              if (!doc) {
+                doc = c.endsWith('_user') ? {is_admin: false} : {}
+              }
+              _.putValue(doc, '_openid', undefined) // 需要先删除_openid再和obj比较
+              _.putValue(doc, '_id', undefined)
+              let write_keys
+              if (skip_equal) {
+                write_keys = obj_keys
+              } else {
+                write_keys = obj_keys.filter(key => !_.isEqual(_.pickValue(doc, key), obj[key]))
+              }
+              if (skip_equal || write_keys.length > 0) {
+                for (let key in obj) {
+                  _.putValue(doc, key, obj[key], {remove_undefined: false})
+                }
+                _._saveUserConfigToStorageAndCloudDB(c, doc, {encrypt, write_keys}).then(() => {
+                  resolve(true)
+                }).catch(reject)
+              } else {
+                _.setStorage(storage_key, doc, encrypt)
+                  .then(() => {
+                    resolve(true)
+                  })
+                  .catch(e => { reject({errno: 'setUserConfigObj Failed', errMsg: `调用setStorage时失败`, e}) })
+              }
+            })
+        })
+
+    })
+  },
+
+  /**
    * 传入一个对象根据key获得多个用户配置。
    * 返回的对象中，key为传入的对象的key，value为对应的用户配置，传入的obj的value是config不存在时的默认值。
    * 
-   * @param {string} c - 用户配置的key值
+   * @param {string} c - 集合名称，通常形式为{app}_user，如admin_user
    * @param {Object} obj - 用户配置对象，其中 `key` 是配置项的键名，`value` 是配置项不存在时的默认值
    * @param {Object} options - 包含以下属性的对象:
    *   - {boolean} encrypt - 默认为 `true`，是否对存储进行加密处理
    * @returns {Promise<Object>} 返回一个Promise，当成功时，返回一个对象，其中 `key` 是传入的对象的 `key`，`value` 是对应的用户配置；当失败时，返回错误信息。
    * 
-   * 注意：
+   * 注意
    *   1. 新用户调用时，数据库中没有数据，此时会在本地写入空 Storage，但不会在数据库中创建数据。
    *   2. 若 `obj` 中部分 `key` 在本地缓存中有值，部分 `key` 没有值，则不会读取数据库，会使用 `obj` 默认值。
    *   3. 同样的，之所以有情况2存在，可能是因为在云函数中修改用户配置，因此请勿在云函数中修改用户配置。
    *
    * @example
-   *   const setting = await utils.getUserConfigObj('key', {'a.b.c': 'default', d: ''}) // 根据key获得多个用户配置
-   *   console.log(setting.a.b.c)
+   *   const setting = await utils.getUserConfigObj('key', {'a.b.c': 1, d: ''}) // 根据key获得多个用户配置
+   *   console.log(setting['a.b.c'])
    *   console.log(setting.d)
    */
   getUserConfigObj (c, obj, {encrypt = true} = {}) {
@@ -3593,7 +3940,7 @@ const utils = {
       }
 
       function _loadFromCloud() {
-        _.getMyOne(c, {})
+        _.getMyOneByAgg(c, {})
           .then(doc => {
             // 数据库中有数据
             if (doc) {
@@ -3634,98 +3981,135 @@ const utils = {
   },
 
   /**
-   * 向用户配置数组末尾添加一个元素，返回一个Promise，成功时返回修改后的数组，失败时触发 `.catch()`。
+   * 把用户配置先放入缓冲区，用 `flushUserConfigBuffer` 函数一次性写入，以减少数据库调用次数。
    * 
-   * @param {string} c - 用户配置的key值
-   * @param {string} key - 配置项的键名，必须是数组或未定义，支持点表示法，如'a.b.c'
-   * @param {any} value - 要添加的元素
-   * @param {Object} options - 包含以下属性的对象:
-   *   - {boolean} allow_repeat - 默认为 `true`，是否允许重复
-   *   - {number|null} limit - 数组最大长度，超过该长度时，会删除前面的元素
-   *   - {boolean} prepend - 默认为 `false`，是否添加到数组的最前面
-   * @returns {Promise<Array>} 返回一个Promise，当成功时，返回修改后的数组；当失败时，返回错误信息
+   * @param {string} c - 集合名称，通常形式为{app}_user，如admin_user
+   * @param {string} key 配置项的键名，支持点表示法，如'a.b.c'
+   * @param {any} value 配置项的值
    * 
-   * 注意
-   *   1. 当 `allow_repeat` 为 `false` 时，若数组中已有该元素时，不会再添加
-   *   2. `value` 是对象时，会根据 `_id` 去重复
-   *   3. 当 `prepend` 为 `true` 且使用了 `limit` 时，数量超过 `limit` 时会删除最后的元素
+   * 说明
+   *   1. 在设置页面，可先调用此函数，然后在 `onUnload` 事件中使用 `await utils.flushUserConfigBuffer()`。
+   *   2. 此函数只会修改缓冲区，不会修改数据库，从而不消耗调用次数。
+   *   3. 直至调用 `flushUserConfigBuffer` 函数后，才会修改本地存储和数据库。
+   *
+   * @example
+   *   utils.setUserConfigBuffer('admin_user', 'a.b.c', 'value') // 将配置项放入缓冲区
+   */
+  setUserConfigBuffer (c, key, value) {
+    const _ = this
+    const buffer = _._user_config_buffer
+    // 确保_user_config_buffer[c]存在，且是一个对象
+    if (!_.isObject(buffer[c])) { buffer[c] = {} }
+    /* 注意，这里不能使用_.putValue，当c是点表示法时需要逐一保存
+       举例说明，若使用_.putValue，当key等于a.b时，buffer[c]会变成{a: {b: value}}
+       此时当调用flushUserConfigBuffer时，data.a会被替换为{b: value}，导致a的其他数据丢失
+       */
+    buffer[c][key] = value // 这里不能使用_.putValue
+  },
+
+  /**
+   * 把用户配置缓冲区中的数据一次性写入数据库。
+   * 
+   * @param {string} c - 集合名称，通常形式为{app}_user，如admin_user
+   * @param {Object} options 包含以下属性的对象:
+   *   - {boolean} skip_equal - 默认为 `false`，当为 `true` 时，跳过比较直接写入数据库
+   *   - {boolean} encrypt - 默认为 `true`，是否对存储进行加密处理
+   * @returns {Promise} 返回一个Promise，当成功时，返回 `undefined`；当失败时，返回错误信息。
    *
    * 调用次数
-   *   此函数每次调用都会写入数据库，会消耗1次调用次数
+   *   1. 当 `skip_equal=false` 时，仅在缓冲区有数据且数据有变化时，会消耗1次调用次数，否则不消耗调用次数。
+   *   2. 当 `skip_equal=true` 时，无论缓冲区中的数据是否变化，都会直接写入数据库，消耗1次调用次数。
+   *   3. 不管缓冲区中有多少数据，写数据库操作只消耗1次调用次数。
+   *   4. 当前端Storage不存在时，会先读取一次数据库，此时会多消耗1次调用次数
+   *
+   * 注意
+   *   1. 注意缓冲区数据不能超过512K。
+   *   2. 在`onUnload`事件中调用时，记得使用 `await`，如 `await utils.flushUserConfigBuffer()`，否则可能导致写入数据库失败。
    * 
    * @example
-   *   utils.pushUserConfig('admin_user', 'arr_key_path', 'value')
+   *   utils.flushUserConfigBuffer('admin_user') // 一次性将缓冲区中的数据写入数据库
    */
-  pushUserConfig (c, key, value, {allow_repeat = true, limit = null, prepend = false} = {}) {
+  flushUserConfigBuffer (c, {skip_equal = false, encrypt = true} = {}) {
     const _ = this
+    const storage_key = 's_' + c
+    const buffer = _._user_config_buffer[c]
+    if (!_.isObject(buffer) || _.isEmpty(buffer)) {
+      return Promise.resolve()
+    }
     return new Promise((resolve, reject) => {
-      _.getUserConfig(c, key)
+
+      // 获得本地缓存数据
+      _.getStorage(storage_key, encrypt)
+
+      // 本地有缓存（以本地缓存为准）
         .then(data => {
-          if (_.isNone(data)) { data = [] }
-          if (Array.isArray(data)) {
-            if (!allow_repeat
-              && ( (_.isObject(value) && _.includesDoc(data, value))
-                || data.includes(value) )
-            ) {
-              resolve(data)
-            } else {
-              if (prepend) {
-                data.unshift(value)
-              } else {
-                data.push(value)
-              }
-              if (limit && data.length > limit) {
-                if (prepend) {
-                  data = data.slice(0, limit)
-                } else {
-                  data = data.slice(data.length - limit)
-                }
-              }
-              _.setUserConfig(c, key, data)
-                .then(() => { resolve(data) })
-                .catch(e => { reject({errno: 'pushUserConfig Failed', errMsg: `调用setUserConfig时失败`, e}) })
-            }
+          let write_keys
+          if (skip_equal) {
+            write_keys = Object.keys(buffer)
           } else {
-            reject({errno: 'pushUserConfig Failed', errMsg: `配置项${key}不是数组`})
+            write_keys = Object.keys(buffer).filter(key => !_.isEqual(_.pickValue(data, key), buffer[key]))
           }
+          if (!skip_equal && write_keys.length === 0) {
+            _.clearUserConfigBuffer(c)
+            return resolve()
+          }
+          for (const key in buffer) {
+            _.putValue(data, key, buffer[key], {remove_undefined: false})
+          }
+          _._saveUserConfigToStorageAndCloudDB(c, data, {encrypt, write_keys}).then(() => {
+            _.clearUserConfigBuffer(c)
+            resolve()
+          }).catch(reject)
         })
-        .catch(e => { reject({errno: 'pushUserConfig Failed', errMsg: `调用getUserConfig时失败`, e}) })
+
+      // 本地没有缓存，先读一下数据库中是否有数据
+        .catch(() => {
+          _.getMyOneByAgg(c, {})
+            .then(doc => {
+              // 数据库没有数据时新建
+              if (!doc) {
+                doc = c.endsWith('_user') ? {is_admin: false} : {}
+              }
+              let write_keys
+              if (skip_equal) {
+                write_keys = Object.keys(buffer)
+              } else {
+                write_keys = Object.keys(buffer).filter(key => !_.isEqual(_.pickValue(doc, key), buffer[key]))
+              }
+              if (!skip_equal && write_keys.length === 0) {
+                _.clearUserConfigBuffer(c)
+                _.setStorage(storage_key, doc, encrypt).then(resolve)
+                return // resolve在上一行
+              }
+              for (const key in buffer) {
+                _.putValue(doc, key, buffer[key], {remove_undefined: false})
+              }
+              _._saveUserConfigToStorageAndCloudDB(c, doc, {encrypt, write_keys}).then(() => {
+                _.clearUserConfigBuffer(c)
+                resolve()
+              }).catch(reject)
+            })
+        })
     })
   },
 
   /**
-   * 从用户配置数组中删除一个或多个匹配的元素，返回一个Promise，成功时返回删除的元素个数。
+   * 清空用户配置缓冲区。当 `c` 为 `null` 时，清空所有缓冲区。
    * 
-   * @param {string} c - 用户配置的key值
-   * @param {string} key - 配置项的键名，必须是数组或未定义，支持点表示法，如'a.b.c'
-   * @param {any} value - 要删除的元素，当value是对象时，会根据 _id 删除
-   * @returns {Promise<number>} 返回一个Promise，当成功时，返回删除的元素个数；当失败时，返回错误信息。
+   * @param {string} c - 集合名称，通常形式为{app}_user，如admin_user
+   * @param {string|null} c - 用户配置的key值，当为 `null` 时，清空所有缓冲区
    * 
    * @example
-   *   utils.pullUserConfig('admin_user', 'arr_key_path', 'value')
+   *   utils.clearUserConfigBuffer('admin_user') // 清空指定的缓冲区
+   *   utils.clearUserConfigBuffer(null) // 清空所有缓冲区
    */
-  pullUserConfig (c, key, value) {
+  clearUserConfigBuffer (c = null) {
     const _ = this
-    return new Promise((resolve, reject) => {
-      _.getUserConfig(c, key)
-        .then(data => {
-          if (_.isNone(data)) { data = [] }
-          if (Array.isArray(data)) {
-            const index = _.isObject(value) ? _.docIndexOf(data, value) : data.indexOf(value)
-            if (index > -1) {
-              data.splice(index, 1)
-              _.setUserConfig(c, key, data)
-                .then(() => { resolve(1) })
-                .catch(e => { reject({errno: 'pullUserConfig Failed', errMsg: `调用setUserConfig时失败`, e}) })
-            } else {
-              resolve(0)
-            }
-          } else {
-            reject({errno: 'pullUserConfig Failed', errMsg: `配置项${key}不是数组`})
-          }
-        })
-        .catch(e => { reject({errno: 'pullUserConfig Failed', errMsg: `调用getUserConfig时失败`, e}) })
-    })
+    if (c === null) {
+      _._user_config_buffer = {}
+    } else {
+      delete _._user_config_buffer[c]
+    }
   },
 
   /**
@@ -4839,8 +5223,8 @@ const utils = {
    * 
    * only和except是用逗号分隔的字符串，如：'_id, content'。
    * 
-   * @param {string} [only=''] - 需要返回的字段，多个字段用逗号分隔
-   * @param {string} [except=''] - 需要排除的字段，多个字段用逗号分隔
+   * @param {string} [only=''] - 需要返回的字段，多个字段用逗号分隔，支持点表示法
+   * @param {string} [except=''] - 需要排除的字段，多个字段用逗号分隔，支持点表示法
    * @returns {Object} 字段映射对象，需要返回的字段值为true，需要排除的字段值为false
    */
   _makeField(only = '', except = '') {
@@ -4916,12 +5300,16 @@ const utils = {
    * @param {Object} doc - 包含用户配置的对象，必须已经设置了value
    * @param {Object} options - 配置选项:
    *   - {boolean} encrypt - 是否加密存储，默认为true
+   *   - {Array<string>} write_keys - 需要写入到数据库的字段，默认为null，表示全部写入。此字段主要用于避免单次写入超过微信规定的512K上限
    * @returns {Promise} 返回一个Promise对象，成功时无返回值，失败时返回错误信息
+   *
    * 说明
    *   1. 函数内部首先会清除doc对象中的_openid和_id字段，以避免数据库更新失败
    *   2. 本地存储更新后，将尝试更新云数据库中的记录
    *   3. 如果云数据库中没有相应记录，则会添加新记录
    *   4. 如果数据库更新操作影响的记录数多于一个，会记录错误信息
+   *   5. 当doc中的值为undefined时会自动删除该字段
+   *
    * @example
    *   // 调用示例
    *   _saveUserConfigToStorageAndCloudDB('user_config', {theme: 'dark'}, {encrypt: false}).then(() => {
@@ -4930,7 +5318,7 @@ const utils = {
    *     console.error('Error saving configuration', error)
    *   })
    */
-  _saveUserConfigToStorageAndCloudDB (c, doc, {encrypt = true} = {}) {
+  _saveUserConfigToStorageAndCloudDB (c, doc, {encrypt = true, write_keys = null} = {}) {
     const _ = this
     const storage_key = 's_' + c
     return new Promise(async (resolve, reject) => {
@@ -4942,8 +5330,16 @@ const utils = {
       _.setStorage(storage_key, doc, encrypt)
         .then(() => {
 
+          let write_doc = doc
+          if (!_.isNone(write_keys)) {
+            write_doc = {}
+            for (let k of write_keys) {
+              write_doc[k] = _.pickValue(doc, k)
+            }
+          }
+
           // 更新数据库（需要检查数据库中是否有记录）
-          _.updateMyMatch(c, {}, doc)
+          _.updateMyMatch(c, {}, write_doc)
             .then(updated => {
 
               // 数据库中有记录，且更新成功
@@ -4952,7 +5348,7 @@ const utils = {
               } else {
 
                 // 不知道数据库中是否有记录。可能是doc与数据库中数据相同，也可能没有数据。需判断
-                _.getMyOne(c, {})
+                _.getMyOneByAgg(c, {})
                   .then(exists => {
                     // 数据库中没有数据时，写入新数据
                     if (!exists) {
@@ -4986,6 +5382,11 @@ const utils = {
    * - 在本地环境或管理员模式下，返回console。
    * - 在正式运行环境下，返回云端日志管理器。若不支持getRealtimeLogManager，返回一个具备基本日志方法的空实现。
    * @returns {Object} 日志记录器实例，具有info, log, warn, 和 error方法。
+   *
+   * 注意
+   *   _logger的执行是不同步的，因此需要对obj进行深拷贝.
+   *   否则，如果obj是一个对象，那么在_logger执行时，obj可能已经被修改了
+   * 
    */
   _logger ()  {
     const _ = this

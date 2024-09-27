@@ -19,7 +19,7 @@
             <i class="weui-icon-checked"></i>
           </view>
           <view class="weui-cell__bd" bind:longtap="deleteTodo" data-id="{{item._id}}">
-            <view>{{item.title}}</view>
+            <view>{{item.title || 'no title'}}</view>
           </view>
         </label>
 
