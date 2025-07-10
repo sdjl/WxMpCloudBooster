@@ -282,7 +282,7 @@ const utils = {
    */
   log(obj) {
     const _ = this
-    obj = _._logToObj(_.jsonDeepcopy(obj))
+    obj = _._logToObj(_.deepCopy(obj))
     _._logger().log(obj) 
   },
 
@@ -292,7 +292,7 @@ const utils = {
    */
   info(obj) {
     const _ = this
-    obj = _._logToObj(_.jsonDeepcopy(obj))
+    obj = _._logToObj(_.deepCopy(obj))
     _._logger().info(obj)
   },
 
@@ -302,7 +302,7 @@ const utils = {
    */
   warn(obj) {
     const _ = this
-    obj = _._logToObj(_.jsonDeepcopy(obj))
+    obj = _._logToObj(_.deepCopy(obj))
     _._logger().warn(obj) 
   },
 
@@ -312,7 +312,7 @@ const utils = {
    */
   error(obj) {
     const _ = this
-    obj = _._logToObj(_.jsonDeepcopy(obj))
+    obj = _._logToObj(_.deepCopy(obj))
     _._logger().error(obj) 
   },
 
@@ -1691,6 +1691,8 @@ const utils = {
       return obj
     } else if (_.isArray(obj)) {
       return obj.map(_.deepCopy.bind(_))
+    } else if (_.isDate(obj)) {
+      return new Date(obj)
     } else {
       const ret = {}
       for (let key in obj) {
@@ -1706,6 +1708,11 @@ const utils = {
    * 
    * @param {any} i - 被复制的值
    * @returns {any} 返回复制后的值。
+   *
+   * 注意
+   *   1. 会移除undefined
+   *   2. 返回的时间对象会变成字符串
+   *   3. 鉴于上面两个原因，一般情况下请使用_.deepCopy代替
    * 
    * @example
    * utils.jsonDeepcopy({ a: 1, b: null }) // { a: 1 }
@@ -3344,6 +3351,7 @@ const utils = {
    * 注意
    *   1. 单个键允许的最大数据长度为1MB（加密后约为0.7MB），总存储上限为10MB（加密后为7MB）。
    *   2. 用户拖动删除小程序时，硬盘持久存储也会被清除。
+   *   3. 当value中有时间类型时，会被转换为字符串，取出时需要手动转换为时间类型。
    */
   setStorage (key, value, encrypt = false) {
     return wx.setStorage({key, data: value, encrypt})
@@ -3353,7 +3361,7 @@ const utils = {
    * 异步获取硬盘持久存储。
    * @param {string} key - 存储键名。
    * @param {boolean} encrypt - 是否对存储数据进行加密，默认为`false`。
-   * @returns {Promise} 返回一个Promise，成功时返回存储的数据，失败时返回错误信息。
+   * @returns {Promise} 返回一个Promise，成功时返回存储的数据，数据不存在时返回null。
    */
   getStorage (key, encrypt = false) {
     const _ = this
@@ -3366,7 +3374,9 @@ const utils = {
             reject({errno: 'getStorage Failed', errMsg: `获取Storage数据失败`})
           }
         })
-        .catch(e => { reject({errno: 'getStorage Failed', errMsg: `获取Storage数据失败`, e}) })
+        .catch(e => { 
+          resolve(null)
+        })
     })
   },
 
@@ -3395,6 +3405,10 @@ const utils = {
    *   - {boolean} encrypt - 是否加密存储，默认为true
    * @returns {Promise<boolean>} 返回一个Promise对象，resolved值为true表示数据已更改，false表示数据未更改
    *
+   * 注意
+   *   1. 尽可能使用await避免多个setUserConfig同时写入，以避免数据冲突
+   *   2. 由于本函数基于Storage，而Storage在存储时间类型时会转换为字符串，因此在使用此函数时，请你自己先手动把时间类型转换为字符串，取出时再手动转换为时间类型（不自动转换是为了避免性能开销）。如：new Date().toISOString()
+   *
    * 说明
    *   1. 如果本地存储中有数据，则优先使用本地数据覆盖数据库
    *   2. 如果本地无数据，则以数据库数据为准
@@ -3421,6 +3435,7 @@ const utils = {
   setUserConfig (c, key, value, {skip_equal = false, encrypt = true} = {}) {
     const _ = this
     const storage_key = 's_' + c
+    _.assert(_.isString(key), 'key必须是字符串')
     return new Promise((resolve, reject) => {
 
       // 获得本地缓存数据
@@ -3489,6 +3504,7 @@ const utils = {
   getUserConfig (c, key, {default_value = null, encrypt = true} = {}) {
     const _ = this
     const storage_key = 's_' + c
+    _.assert(_.isString(key), 'key必须是字符串')
     return new Promise((resolve, reject) => {
       // 添加app前缀是为了避免本地app名称变动时，用本地的错误缓存去更新数据库
       // 如本地app开发时应该是a，但设置成了b，可能会用本地缓存去更新数据库b_user
