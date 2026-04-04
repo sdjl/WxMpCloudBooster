@@ -890,18 +890,22 @@ const utils = {
     const _ = this
     const w = {_id: id}
     return new Promise((resolve, reject) => {
-      _.coll(c)
-        .where({...w, ...(mine ? {_openid: '{openid}'} : {})})
-        .limit(1)
-        .update({data: d})
-        .then(res => {
-          if(res.stats.updated > 0){
-            resolve(true)
-          } else {
-            resolve(false)
-          }
-        })
-        .catch(reject)
+      if (id) {
+        _.coll(c)
+          .where({...w, ...(mine ? {_openid: '{openid}'} : {})})
+          .limit(1)
+          .update({data: d})
+          .then(res => {
+            if(res.stats.updated > 0){
+              resolve(true)
+            } else {
+              resolve(false)
+            }
+          })
+          .catch(reject)
+      } else {
+        reject({errno: 'updateDoc Failed', errMsg: `id不能为空`})
+      }
     })
   },
 
